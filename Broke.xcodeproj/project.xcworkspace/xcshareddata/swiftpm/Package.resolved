@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/alessiorubicini/SFSymbolsPicker",
       "state" : {
-        "revision" : "73c909b8a7fc77a30dd04208e33f759f8b52c4c8",
-        "version" : "1.0.6"
+        "revision" : "02800d8db419d0dbf6d1e6128ee517f784887d14",
+        "version" : "1.0.7"
       }
     }
   ],

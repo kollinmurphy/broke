@@ -13,6 +13,54 @@ class ProfileManager: ObservableObject {
     @Published var profiles: [Profile] = []
     @Published var currentProfileId: UUID?
     
+    
+    let icons = [
+        // Health & Focus
+        "figure.mind.and.body", "leaf", "heart", "bolt.heart", "figure.walk", "figure.run",
+        "bed.double", "moon", "sun.max",
+        "brain.head.profile", "hourglass", "hourglass.circle",
+        
+        // Work & Productivity
+        "doc", "doc.text", "folder", "calendar", "calendar.badge.clock",
+        "briefcase", "chart.bar", "chart.pie",
+        "paperclip", "pencil", "pencil.circle", "highlighter",
+        "book", "text.book.closed",
+        
+        // Education
+        "graduationcap",
+        "books.vertical", "text.redaction",
+        "square.and.pencil", "lasso.and.sparkles",
+        "ruler", "compass.drawing",
+        "function", "x.squareroot",
+        "number", "character.book.closed",
+        
+        // Social & Communication
+        "message", "bubble.left", "bubble.right", "phone",
+        "envelope", "person.2", "person.crop.circle", "person.3",
+        
+        // Apps & Devices
+        "app", "square.grid.2x2", "square.grid.3x2",
+        "rectangle.stack", "desktopcomputer", "laptopcomputer",
+        "ipad", "iphone", "applewatch", "tv",
+        
+        // Entertainment & Games
+        "gamecontroller", "headphones", "music.note", "music.note.list",
+        "play.circle", "pause.circle", "film", "ticket", "sparkles",
+        
+        // Internet & Browsing
+        "safari", "globe", "network",
+        "antenna.radiowaves.left.and.right", "link", "magnifyingglass", "wifi",
+        
+        // Time & Control
+        "clock", "alarm", "stopwatch", "timer",
+        "bell", "bell.slash", "hand.raised", "lock", "key",
+        
+        // Misc
+        "gear", "gearshape", "slider.horizontal.3", "switch.2", "power",
+        "trash", "star", "flag",
+        "checkmark.circle", "xmark.circle"
+    ]
+    
     init() {
         loadProfiles()
         ensureDefaultProfile()
@@ -50,7 +98,7 @@ class ProfileManager: ObservableObject {
         UserDefaults.standard.set(currentProfileId?.uuidString, forKey: "currentProfileId")
     }
     
-    func addProfile(name: String, icon: String = "bell.slash") {
+    func addProfile(name: String, icon: String = "figure.mind.and.body") {
         let newProfile = Profile(name: name, appTokens: [], categoryTokens: [], icon: icon)
         profiles.append(newProfile)
         currentProfileId = newProfile.id
@@ -80,10 +128,10 @@ class ProfileManager: ObservableObject {
     }
     
     func deleteProfile(withId id: UUID) {
-//        guard !profiles.first(where: { $0.id == id })?.isDefault ?? false else {
-//            // Don't delete the default profile
-//            return
-//        }
+        //        guard !profiles.first(where: { $0.id == id })?.isDefault ?? false else {
+        //            // Don't delete the default profile
+        //            return
+        //        }
         
         profiles.removeAll { $0.id == id }
         
@@ -93,7 +141,7 @@ class ProfileManager: ObservableObject {
         
         saveProfiles()
     }
-
+    
     func deleteAllNonDefaultProfiles() {
         profiles.removeAll { !$0.isDefault }
         
@@ -111,7 +159,7 @@ class ProfileManager: ObservableObject {
             saveProfiles()
         }
     }
-
+    
     func deleteCurrentProfile() {
         profiles.removeAll { $0.id == currentProfileId }
         if let firstProfile = profiles.first {
@@ -164,6 +212,12 @@ class ProfileManager: ObservableObject {
             saveProfiles()
         }
     }
+    
+    func getInitialIcon() -> String {
+        let usedIcons = Set(profiles.map { $0.icon })
+        let availableIcons = icons.filter { !usedIcons.contains($0) }
+        return availableIcons.randomElement() ?? "figure.mind.and.body"
+    }
 }
 
 struct Profile: Identifiable, Codable {
@@ -172,11 +226,11 @@ struct Profile: Identifiable, Codable {
     var appTokens: Set<ApplicationToken>
     var categoryTokens: Set<ActivityCategoryToken>
     var icon: String // New property for icon
-
+    
     var isDefault: Bool {
         name == "Default"
     }
-
+    
     // New initializer to support default icon
     init(name: String, appTokens: Set<ApplicationToken>, categoryTokens: Set<ActivityCategoryToken>, icon: String = "bell.slash") {
         self.id = UUID()

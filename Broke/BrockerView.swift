@@ -108,7 +108,7 @@ struct BrokerView: View {
         Button(action: {
             showCreateTagAlert = true
         }) {
-            Image(systemName: "plus")
+            Image(systemName: "plus.viewfinder")
         }
         .disabled(!NFCNDEFReaderSession.readingAvailable)
     }

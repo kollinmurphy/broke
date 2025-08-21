@@ -14,49 +14,58 @@ struct ProfilesPicker: View {
     @State private var editingProfile: Profile?
     
     var body: some View {
-        VStack {
+        VStack {HStack {
             Text("Profiles")
                 .font(.headline)
-                .padding(.horizontal)
-                .padding(.top)
+            
+            Spacer()
+            
+            Button(action: {
+                showAddProfileView = true
+            }) {
+                Image(systemName: "plus")
+                    .font(.headline)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top)
             
             ScrollView {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 90), spacing: 10)], spacing: 10) {
                     ForEach(profileManager.profiles) { profile in
-                        ProfileCell(profile: profile, isSelected: profile.id == profileManager.currentProfileId)
-                            .onTapGesture {
-                                profileManager.setCurrentProfile(id: profile.id)
+                        Button(action: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+                                if (profileManager.currentProfileId == profile.id) {
+                                    editingProfile = profile
+                                }
+                                else
+                                {
+                                    profileManager.setCurrentProfile(id: profile.id)
+                                }
                             }
-                            .onLongPressGesture {
-                                editingProfile = profile
-                            }
-                    }
-                    
-                    ProfileCellBase(name: "New...", icon: "plus", appsBlocked: nil, categoriesBlocked: nil, isSelected: false, isDashed: true, hasDivider: false)
-                        .onTapGesture {
-                            showAddProfileView = true
+                        }) {
+                            ProfileCell(profile: profile, isSelected: profile.id == profileManager.currentProfileId)
                         }
+                        .onLongPressGesture {
+                            editingProfile = profile
+                        }
+                        
+                    }
                 }
                 .padding(.horizontal, 10)
+                .padding(.vertical, 5)
             }
-            
-            Spacer()
-            
-            Text("Long press on a profile to edit...")
-                .font(.caption2)
-                .foregroundColor(.secondary.opacity(0.7))
-                .padding(.bottom, 8)
         }
         .background(Color("ProfileSectionBackground"))
         .sheet(item: $editingProfile) { profile in
-            ProfileFormView(profile: profile, profileManager: profileManager) {
+            ProfileFormView(profile: profile, canDelete: profileManager.profiles.count > 1, profileManager: profileManager) {
                 editingProfile = nil
-            }
+            }.interactiveDismissDisabled(true)
         }
         .sheet(isPresented: $showAddProfileView) {
             ProfileFormView(profileManager: profileManager) {
                 showAddProfileView = false
-            }
+            }.interactiveDismissDisabled(true)
         }
     }
 }
@@ -69,29 +78,21 @@ struct ProfileCellBase: View {
     let isSelected: Bool
     var isDashed: Bool = false
     var hasDivider: Bool = true
-
+    
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 10) {
             Image(systemName: icon)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 30, height: 30)
-            if hasDivider {
-                Divider().padding(2)
-            }
             Text(name)
                 .font(.caption)
                 .fontWeight(.medium)
                 .lineLimit(1)
-            
-            if let apps = appsBlocked, let categories = categoriesBlocked {
-                Text("A: \(apps) | C: \(categories)")
-                    .font(.system(size: 10))
-            }
         }
         .frame(width: 90, height: 90)
         .padding(2)
-        .background(isSelected ? Color.blue.opacity(0.3) : Color.secondary.opacity(0.2))
+        .background(isSelected ? Color.blue.opacity(0.3) : Color.clear)
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
@@ -106,7 +107,7 @@ struct ProfileCellBase: View {
 struct ProfileCell: View {
     let profile: Profile
     let isSelected: Bool
-
+    
     var body: some View {
         ProfileCellBase(
             name: profile.name,

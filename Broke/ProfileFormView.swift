@@ -17,15 +17,19 @@ struct ProfileFormView: View {
     @State private var showAppSelection = false
     @State private var activitySelection: FamilyActivitySelection
     @State private var showDeleteConfirmation = false
+    @FocusState private var isTextFieldFocused: Bool
     let profile: Profile?
+    let canDelete: Bool
     let onDismiss: () -> Void
+    let iconSize: CGFloat = 30
     
-    init(profile: Profile? = nil, profileManager: ProfileManager, onDismiss: @escaping () -> Void) {
+    init(profile: Profile? = nil, canDelete: Bool = false, profileManager: ProfileManager, onDismiss: @escaping () -> Void) {
         self.profile = profile
+        self.canDelete = canDelete
         self.profileManager = profileManager
         self.onDismiss = onDismiss
         _profileName = State(initialValue: profile?.name ?? "")
-        _profileIcon = State(initialValue: profile?.icon ?? "bell.slash")
+        _profileIcon = State(initialValue: profile?.icon ?? profileManager.getInitialIcon())
         
         var selection = FamilyActivitySelection()
         selection.applicationTokens = profile?.appTokens ?? []
@@ -36,12 +40,17 @@ struct ProfileFormView: View {
     var body: some View {
         NavigationView {
             Form {
-                Section(header: Text("Profile Details")) {
+                Section(header: Text("Profile")) {
                     VStack(alignment: .leading) {
                         Text("Profile Name")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         TextField("Enter profile name", text: $profileName)
+                            .focused($isTextFieldFocused)
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        isTextFieldFocused = true
                     }
                     
                     Button(action: { showSymbolsPicker = true }) {
@@ -49,40 +58,50 @@ struct ProfileFormView: View {
                             Image(systemName: profileIcon)
                                 .resizable()
                                 .aspectRatio(contentMode: .fit)
-                                .frame(width: 40, height: 40)
-                            Text("Choose Icon")
+                                .frame(width: iconSize, height: iconSize)
+                            Text("Select Icon")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }.padding(.vertical, 4)
+                    }
+                }
+                
+                Section(header: Text("Screen Time")) {
+                    Button(action: { showAppSelection = true }) {
+                        HStack {
+                            Text("Choose Blocked Activities")
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .foregroundColor(.secondary)
                         }
-                    }
-                }
-                
-                Section(header: Text("App Configuration")) {
-                    Button(action: { showAppSelection = true }) {
-                        Text("Configure Blocked Apps")
+                        .padding(.vertical, 10)
                     }
                     
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Blocked Apps:")
-                            Spacer()
-                            Text("\(activitySelection.applicationTokens.count)")
-                                .fontWeight(.bold)
-                        }
-                        HStack {
-                            Text("Blocked Categories:")
-                            Spacer()
-                            Text("\(activitySelection.categoryTokens.count)")
-                                .fontWeight(.bold)
-                        }
-                        Text("Broke can't list the names of the apps due to privacy concerns, it is only able to see the amount of apps selected in the configuration screen.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    HStack {
+                        Image(systemName: "app.badge")
+                        Text("Blocked Apps")
+                        Spacer()
+                        Text("\(activitySelection.applicationTokens.count)")
+                            .fontWeight(.bold)
+                    }
+                    HStack {
+                        Image(systemName: "square.stack.3d.up.fill")
+                        Text("Blocked Categories")
+                        Spacer()
+                        Text("\(activitySelection.categoryTokens.count)")
+                            .fontWeight(.bold)
+                    }
+                    HStack {
+                        Image(systemName: "safari")
+                        Text("Blocked Sites")
+                        Spacer()
+                        Text("\(activitySelection.webDomainTokens.count)")
+                            .fontWeight(.bold)
                     }
                 }
                 
-                if profile != nil {
+                if profile != nil && canDelete {
                     Section {
                         Button(action: { showDeleteConfirmation = true }) {
                             Text("Delete Profile")
@@ -96,18 +115,23 @@ struct ProfileFormView: View {
                 leading: Button("Cancel", action: onDismiss),
                 trailing: Button("Save", action: handleSave)
                     .disabled(profileName.isEmpty)
+                    .fontWeight(.bold)
+                    .tint(.blue)
+                
             )
             .sheet(isPresented: $showSymbolsPicker) {
-                SymbolsPicker(selection: $profileIcon, title: "Pick an icon", autoDismiss: true)
+                IconSelectionSheet(icons: profileManager.icons, selectedIcon: $profileIcon).interactiveDismissDisabled(true)
             }
             .sheet(isPresented: $showAppSelection) {
                 NavigationView {
                     FamilyActivityPicker(selection: $activitySelection)
-                        .navigationTitle("Select Apps")
                         .navigationBarItems(trailing: Button("Done") {
                             showAppSelection = false
-                        })
-                }
+                        }
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                        )
+                }.interactiveDismissDisabled(true)
             }
             .alert(isPresented: $showDeleteConfirmation) {
                 Alert(
@@ -144,5 +168,58 @@ struct ProfileFormView: View {
             profileManager.addProfile(newProfile: newProfile)
         }
         onDismiss()
+    }
+}
+
+
+struct IconSelectionSheet: View {
+    let icons: [String]
+    @Binding var selectedIcon: String
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var pressedIcon: String? = nil
+    
+    let columns = [GridItem(.adaptive(minimum: 60), spacing: 16)]
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 16) {
+                    ForEach(icons, id: \.self) { icon in
+                        Button(action: {
+                            withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) {
+                                selectedIcon = icon
+                            }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                dismiss()
+                            }
+                        }){
+                            Image(systemName: icon)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 40, height: 40)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(selectedIcon == icon ? Color.blue.opacity(0.2) : Color.clear)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .stroke(selectedIcon == icon ? Color.blue : Color.clear, lineWidth: 2)
+                                )
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("Select Icon")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
